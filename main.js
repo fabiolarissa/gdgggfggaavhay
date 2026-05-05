@@ -12,17 +12,15 @@ HTML = """<!DOCTYPE html>
   <style>
     body {font-family: system-ui; background:#111; color:#0f0; margin:0; padding:10px;}
     #messages {height:70vh; overflow:auto; border:1px solid #0f0; padding:10px;}
-    input {width:70%; padding:10px;}
-    button {padding:10px;}
   </style>
 </head>
 <body>
-  <h3>🔴 Room: friends3 (3-4 people)</h3>
+  <h3>🔴 Room: friends3</h3>
   <div id="messages"></div>
-  <input id="msg" placeholder="Type here...">
+  <input id="msg" placeholder="Type...">
   <button onclick="send()">Send</button>
-  <button onclick="enablePiP()" style="margin-top:10px;">🎥 Enable Floating PiP</button>
-  <video id="pipVideo" style="display:none" autoplay playsinline></video>
+  <button onclick="enablePiP()">🎥 PiP</button>
+  <video id="pipVideo" style="display:none"></video>
 
   <script>
   const ws = new WebSocket("wss://" + location.host + "/ws/friends3");
@@ -47,10 +45,10 @@ HTML = """<!DOCTYPE html>
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#111"; ctx.fillRect(0,0,380,600);
     ctx.fillStyle = "#0f0"; ctx.font = "20px sans-serif";
-    ctx.fillText("Overlay Chat Active", 30, 100);
+    ctx.fillText("Chat Overlay", 40, 100);
     video.srcObject = canvas.captureStream(5);
     video.play();
-    video.requestPictureInPicture ? video.requestPictureInPicture() : alert("PiP not supported");
+    video.requestPictureInPicture();
   }
   </script>
 </body>
@@ -61,15 +59,15 @@ async def get():
     return HTMLResponse(HTML)
 
 @app.websocket("/ws/{room}")
-async def ws(websocket: WebSocket, room: str):
+async def ws_endpoint(websocket: WebSocket, room: str):
     await websocket.accept()
     if room not in rooms: rooms[room] = []
     rooms[room].append(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            for c in rooms[room]:
-                if c != websocket:
-                    await c.send_text(data)
-    except:
+            for client in rooms[room]:
+                if client != websocket:
+                    await client.send_text(data)
+    except WebSocketDisconnect:
         rooms[room].remove(websocket)
